@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter/services.dart';
 
 /// Service untuk mengelola push notifications
 class NotificationService {
@@ -8,6 +9,7 @@ class NotificationService {
   static NotificationService get instance => _instance;
   
   late FlutterLocalNotificationsPlugin _flutterLocalNotificationsPlugin;
+  static const MethodChannel _platform = MethodChannel('iot_micon/logging');
   
   NotificationService._internal();
   
@@ -72,6 +74,17 @@ class NotificationService {
       );
       
       debugPrint('Notification shown: $title - $body');
+      // Also write to Android system log via platform channel so adb logcat can catch it
+      try {
+        await _platform.invokeMethod('log', {
+          'level': 'i',
+          'tag': 'NotificationService',
+          'message': 'Notification shown: $title - $body',
+        });
+      } catch (e) {
+        // ignore platform channel failures in non-Android environments
+        debugPrint('Platform log failed: $e');
+      }
     } catch (e) {
       debugPrint('Error showing notification: $e');
     }

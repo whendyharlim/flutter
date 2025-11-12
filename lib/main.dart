@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'screens/homescreen.dart';
@@ -31,6 +32,15 @@ void main() async {
   
   // Initialize watering service for monitoring penyiraman status
   await WateringService.instance.init();
+
+  // In debug mode, trigger a manual test notification once so we can verify
+  // that notification delivery and platform logging works on this device.
+  if (kDebugMode) {
+    await WateringService.instance.triggerWateringNotification(
+      title: '🔔 Tes Penyiraman',
+      body: 'Ini notifikasi uji untuk konfirmasi tampilan/push.',
+    );
+  }
   
   runApp(const MyApp());
 }
