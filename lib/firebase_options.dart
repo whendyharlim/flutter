@@ -51,21 +51,21 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'uTbmyqsIeYHBa6M5TO4zPMHZRGiMT0QEgKrMnBBT',
-    appId: '1:202596605948:android:b825c5af11c6764bae5c79',
-    messagingSenderId: '202596605948',
-    projectId: 'iot-percobaan-8b546',
-    databaseURL: 'https://iot-percobaan-8b546-default-rtdb.asia-southeast1.firebasedatabase.app',
-    storageBucket: 'iot-percobaan-8b546.firebasestorage.app',
+    apiKey: 'AIzaSyA-o4roRfHLOuS3uYrdb8BdbRMlT1kv8tI',
+    appId: '1:16740347050:android:4936f221c6be1253c8b4d3',
+    messagingSenderId: '16740347050',
+    projectId: 'plant-watering-system-54df2',
+    databaseURL: 'https://plant-watering-system-54df2-default-rtdb.asia-southeast1.firebasedatabase.app',
+    storageBucket: 'plant-watering-system-54df2.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyD719-0h82hxtwVZ_pToZNLw_Kzi901v18',
+    apiKey: 'AIzaSyA-o4roRfHLOuS3uYrdb8BdbRMlT1kv8tI',
     appId: '1:202596605948:ios:8cab58ac075f1974ae5c79',
-    messagingSenderId: '202596605948',
-    projectId: 'iot-percobaan-8b546',
-    databaseURL: 'https://iot-percobaan-8b546-default-rtdb.asia-southeast1.firebasedatabase.app',
-    storageBucket: 'iot-percobaan-8b546.firebasestorage.app',
+    messagingSenderId: '16740347050',
+    projectId: 'plant-watering-system-54df2',
+    databaseURL: 'https://plant-watering-system-54df2-default-rtdb.asia-southeast1.firebasedatabase.app',
+    storageBucket: 'plant-watering-system-54df2.firebasestorage.app',
     iosBundleId: 'com.example.iotMicon',
   );
 

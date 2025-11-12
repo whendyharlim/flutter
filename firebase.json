@@ -1,1 +1,34 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"iot-percobaan-8b546","appId":"1:202596605948:android:b825c5af11c6764bae5c79","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"iot-percobaan-8b546","configurations":{"android":"1:202596605948:android:b825c5af11c6764bae5c79","ios":"1:202596605948:ios:8cab58ac075f1974ae5c79"}}}}}}
+{
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-functions-log.log"
+      ]
+    }
+  ],
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+            "projectId": "plant-watering-system-54df2",
+            "appId": "1:16740347050:android:4936f221c6be1253c8b4d3",
+            "fileOutput": "android/app/google-services.json"
+          }
+      }
+    },
+    "dart": {
+      "lib/firebase_options.dart": {
+        "projectId": "plant-watering-system-54df2",
+        "configurations": {
+          "android": "1:16740347050:android:4936f221c6be1253c8b4d3",
+          "ios": "1:202596605948:ios:8cab58ac075f1974ae5c79"
+        }
+      }
+    }
+  }
+}

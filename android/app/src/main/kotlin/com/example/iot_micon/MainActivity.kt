@@ -3,6 +3,7 @@ package com.example.iot_micon
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.os.Build
+import android.content.Intent
 import android.util.Log
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -29,6 +30,26 @@ class MainActivity: FlutterActivity() {
                 result.success(null)
             } else {
                 result.notImplemented()
+            }
+        }
+        // Foreground service control channel
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "iot_micon/foreground_service").setMethodCallHandler { call, result ->
+            when (call.method) {
+                "startService" -> {
+                    val intent = Intent(this, ForegroundService::class.java)
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        startForegroundService(intent)
+                    } else {
+                        startService(intent)
+                    }
+                    result.success(null)
+                }
+                "stopService" -> {
+                    val intent = Intent(this, ForegroundService::class.java)
+                    stopService(intent)
+                    result.success(null)
+                }
+                else -> result.notImplemented()
             }
         }
     }

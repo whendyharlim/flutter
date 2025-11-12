@@ -28,6 +28,16 @@ class WateringService {
       
       // Start monitoring watering duration changes
       _monitorWateringChanges();
+
+      // Attempt to start a foreground service on Android so the listener
+      // remains active when the app is backgrounded.
+      try {
+        const platform = MethodChannel('iot_micon/foreground_service');
+        await platform.invokeMethod('startService');
+        debugPrint('Requested start of foreground service');
+      } catch (e) {
+        debugPrint('Could not start foreground service: $e');
+      }
       
       debugPrint('WateringService initialized');
     } catch (e) {

@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/services.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 
 /// Service untuk mengelola push notifications
 class NotificationService {
@@ -12,6 +13,9 @@ class NotificationService {
   static const MethodChannel _platform = MethodChannel('iot_micon/logging');
   
   NotificationService._internal();
+
+  // Topic for server-side pushes
+  static const String _topic = 'watering_alerts';
   
   /// Initialize notification service
   Future<void> init() async {
@@ -31,6 +35,57 @@ class NotificationService {
         onDidReceiveNotificationResponse: _onNotificationTap,
       );
       
+      // Initialize Firebase Messaging (FCM)
+      try {
+        FirebaseMessaging messaging = FirebaseMessaging.instance;
+
+        // Request notification permission (iOS) / ensure token on Android
+        NotificationSettings settings = await messaging.requestPermission(
+          alert: true,
+          badge: true,
+          sound: true,
+        );
+
+        final token = await messaging.getToken();
+        debugPrint('FCM token: $token');
+        try {
+          await _platform.invokeMethod('log', {
+            'level': 'i',
+            'tag': 'NotificationService',
+            'message': 'FCM token: $token',
+          });
+        } catch (_) {}
+
+        // Subscribe to a topic so server-side functions can push to all devices
+        await messaging.subscribeToTopic(_topic);
+
+        // Foreground message handling: show a local notification when app is active
+        FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
+          debugPrint('FCM onMessage received: ${message.notification?.title}');
+          try {
+            if (message.notification != null) {
+              final title = message.notification!.title ?? 'Penyiraman';
+              final body = message.notification!.body ?? '';
+              await showWateringCompleteNotification(
+                id: DateTime.now().millisecondsSinceEpoch.remainder(100000),
+                title: title,
+                body: body,
+                payload: message.data['payload'] ?? 'fcm',
+              );
+            }
+          } catch (e) {
+            debugPrint('Error showing notification from FCM message: $e');
+          }
+        });
+
+        // When app opened from a notification
+        FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+          debugPrint('FCM onMessageOpenedApp: ${message.data}');
+        });
+      } catch (e) {
+        debugPrint('FCM initialization failed: $e');
+      }
+
       debugPrint('NotificationService initialized');
     } catch (e) {
       debugPrint('Error initializing NotificationService: $e');
