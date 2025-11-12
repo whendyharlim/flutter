@@ -6,17 +6,21 @@ import 'screens/homescreen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Hanya inisialisasi Firebase jika belum ada app terdaftar.
-  // Ini mencegah error duplicate-app ketika aplikasi di-restart atau
-  // ketika hot-reload menyebabkan inisialisasi dipanggil ulang.
+  // Initialize Firebase if not already initialized.
+  // On Android, Firebase may be auto-initialized by FirebaseInitProvider,
+  // so we wrap in try-catch to handle the duplicate-app error gracefully.
   if (Firebase.apps.isEmpty) {
     try {
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
       );
     } catch (e) {
-      // Log error lain yang mungkin terjadi saat inisialisasi
-      debugPrint('Firebase initialization error: $e');
+      // If Firebase is already initialized (e.g., by FirebaseInitProvider on Android),
+      // this error is expected and safe to ignore. The app will continue to work.
+      if (!e.toString().contains('duplicate-app')) {
+        rethrow;
+      }
+      debugPrint('Firebase already initialized by platform (expected on Android)');
     }
   }
   
