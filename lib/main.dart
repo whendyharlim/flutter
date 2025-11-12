@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'screens/homescreen.dart';
+import 'services/notification_service.dart';
+import 'services/watering_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,6 +25,12 @@ void main() async {
       debugPrint('Firebase already initialized by platform (expected on Android)');
     }
   }
+  
+  // Initialize notification service
+  await NotificationService.instance.init();
+  
+  // Initialize watering service for monitoring penyiraman status
+  await WateringService.instance.init();
   
   runApp(const MyApp());
 }
