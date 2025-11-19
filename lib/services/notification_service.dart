@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:firebase_database/firebase_database.dart';
 
 /// Service untuk mengelola push notifications
 class NotificationService {
@@ -40,7 +41,7 @@ class NotificationService {
         FirebaseMessaging messaging = FirebaseMessaging.instance;
 
         // Request notification permission (iOS) / ensure token on Android
-        NotificationSettings settings = await messaging.requestPermission(
+        await messaging.requestPermission(
           alert: true,
           badge: true,
           sound: true,
@@ -56,12 +57,81 @@ class NotificationService {
           });
         } catch (_) {}
 
+        // Write current FCM token to Realtime Database under a per-device path
+        // so multiple devices don't overwrite each other. Use the token itself
+        // as the key (sanitized) under `service/fcm_tokens/<token>`.
+        try {
+          final key = token != null ? token.replaceAll('.', '_') : 'unknown_${DateTime.now().millisecondsSinceEpoch}';
+          final tokenRef = FirebaseDatabase.instance.ref('service/fcm_tokens/$key');
+          await tokenRef.set({
+            'token': token,
+            'updatedAt': ServerValue.timestamp,
+          });
+          debugPrint('Wrote FCM token to RTDB at service/fcm_tokens/$key');
+          try {
+            await _platform.invokeMethod('log', {
+              'level': 'i',
+              'tag': 'NotificationService',
+              'message': 'Wrote FCM token to RTDB at service/fcm_tokens/$key',
+            });
+          } catch (_) {}
+        } catch (e) {
+          debugPrint('Failed writing FCM token to RTDB: $e');
+          try {
+            await _platform.invokeMethod('log', {
+              'level': 'e',
+              'tag': 'NotificationService',
+              'message': 'Failed writing FCM token to RTDB: $e',
+            });
+          } catch (_) {}
+        }
+
+        // Listen for token refreshes and log them for debugging
+        FirebaseMessaging.instance.onTokenRefresh.listen((newToken) async {
+          debugPrint('FCM token refreshed: $newToken');
+          try {
+            await _platform.invokeMethod('log', {
+              'level': 'i',
+              'tag': 'NotificationService',
+              'message': 'FCM token refreshed: $newToken',
+            });
+          } catch (_) {}
+
+          // Update RTDB when the token is refreshed
+          try {
+            final tokenRef = FirebaseDatabase.instance.ref('service/fcm_token');
+            await tokenRef.set({
+              'token': newToken,
+              'updatedAt': ServerValue.timestamp,
+            });
+            debugPrint('Updated refreshed FCM token to RTDB at service/fcm_token');
+            try {
+              await _platform.invokeMethod('log', {
+                'level': 'i',
+                'tag': 'NotificationService',
+                'message': 'Updated refreshed FCM token to RTDB at service/fcm_token',
+              });
+            } catch (_) {}
+          } catch (e) {
+            debugPrint('Failed updating refreshed FCM token to RTDB: $e');
+          }
+        });
+
         // Subscribe to a topic so server-side functions can push to all devices
         await messaging.subscribeToTopic(_topic);
 
         // Foreground message handling: show a local notification when app is active
         FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
-          debugPrint('FCM onMessage received: ${message.notification?.title}');
+          debugPrint('FCM onMessage received: notification=${message.notification}, data=${message.data}');
+          try {
+            await _platform.invokeMethod('log', {
+              'level': 'i',
+              'tag': 'NotificationService',
+              'message': 'FCM onMessage received: ' +
+                  'notification=' + (message.notification?.toString() ?? 'null') +
+                  ', data=' + message.data.toString(),
+            });
+          } catch (_) {}
           try {
             if (message.notification != null) {
               final title = message.notification!.title ?? 'Penyiraman';
@@ -80,8 +150,27 @@ class NotificationService {
 
         // When app opened from a notification
         FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-          debugPrint('FCM onMessageOpenedApp: ${message.data}');
+          debugPrint('FCM onMessageOpenedApp: notification=${message.notification}, data=${message.data}');
+          try {
+            _platform.invokeMethod('log', {
+              'level': 'i',
+              'tag': 'NotificationService',
+              'message': 'FCM onMessageOpenedApp: ' +
+                  'notification=' + (message.notification?.toString() ?? 'null') +
+                  ', data=' + message.data.toString(),
+            });
+          } catch (_) {}
         });
+
+        // Log topic subscription for visibility
+        try {
+          debugPrint('Subscribed to FCM topic: $_topic');
+          _platform.invokeMethod('log', {
+            'level': 'i',
+            'tag': 'NotificationService',
+            'message': 'Subscribed to FCM topic: $_topic',
+          });
+        } catch (_) {}
       } catch (e) {
         debugPrint('FCM initialization failed: $e');
       }

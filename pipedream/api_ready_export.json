@@ -1,0 +1,21 @@
+{
+  "name": "RTDB → FCM Poller",
+  "description": "Scheduled workflow that polls Firebase Realtime Database and sends FCM topic messages when watering completes. Created for API upload/import.",
+  "cron": "*/5 * * * *",
+  "timezone": "UTC",
+  "secrets": {
+    "SA_KEY": "", 
+    "FIREBASE_DB_URL": "",
+    "RTDB_PATH": "/app_to_arduino/watering_duration",
+    "META_PATH": "/service/watering_processor",
+    "FCM_TOPIC": "watering_alerts"
+  },
+  "steps": [
+    {
+      "id": "poller",
+      "type": "nodejs",
+      "timeout_ms": 300000,
+      "code": "const admin = require('firebase-admin');\n\nasync function initAdmin() {\n  if (!admin.apps.length) {\n    if (!process.env.SA_KEY) {\n      throw new Error('Missing SA_KEY environment variable (service account JSON)');\n    }\n    const sa = JSON.parse(process.env.SA_KEY);\n    admin.initializeApp({\n      credential: admin.credential.cert(sa),\n      databaseURL: process.env.FIREBASE_DB_URL\n    });\n  }\n  return admin;\n}\n\nmodule.exports = async (event, steps) => {\n  const adminSDK = await initAdmin();\n  const db = adminSDK.database();\n  const RTDB_PATH = process.env.RTDB_PATH || '/app_to_arduino/watering_duration';\n  const META_PATH = process.env.META_PATH || '/service/watering_processor';\n  const TOPIC = process.env.FCM_TOPIC || 'watering_alerts';\n\n  console.log('Polling RTDB path:', RTDB_PATH);\n\n  try {\n    const snap = await db.ref(RTDB_PATH).once('value');\n    const raw = snap.val();\n    const value = Number(raw) || 0;\n    console.log(new Date().toISOString(), 'value=', value);\n\n    const metaRef = db.ref(META_PATH);\n    await metaRef.transaction((meta) => {\n      if (!meta) meta = { lastValue: 0, lastProcessedAt: 0, pendingSend: false };\n      const now = Date.now();\n      const recentMs = 30 * 1000;\n      if (meta.lastValue > 0 && value === 0 && (now - (meta.lastProcessedAt || 0)) > recentMs) {\n        meta.pendingSend = true;\n        meta.lastProcessedAt = now;\n        meta.lastValue = value;\n      } else {\n        meta.pendingSend = false;\n        meta.lastValue = value;\n      }\n      return meta;\n    }, async (err, committed, snapshot) => {\n      if (err) {\n        console.error('Transaction error:', err);\n        return;\n      }\n      const meta = snapshot.val();\n      if (committed && meta && meta.pendingSend) {\n        console.log('Transition detected (>0 -> 0). Sending FCM to topic', TOPIC);\n        const message = {\n          notification: {\n            title: '✓ Penyiraman Selesai',\n            body: 'Sistem menyelesaikan penyiraman.'\n          },\n          topic: TOPIC\n        };\n        try {\n          const resp = await adminSDK.messaging().send(message);\n          console.log('FCM sent:', resp);\n          await metaRef.update({ pendingSend: false });\n        } catch (sendErr) {\n          console.error('Failed sending FCM:', sendErr);\n        }\n      } else {\n        console.log('No action required. committed=', committed, 'meta=', meta);\n      }\n    });\n  } catch (err) {\n    console.error('Poller error:', err);\n    throw err;\n  }\n};"
+    }
+  ]
+}

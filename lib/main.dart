@@ -5,6 +5,7 @@ import 'firebase_options.dart';
 import 'screens/homescreen.dart';
 import 'services/notification_service.dart';
 import 'services/watering_service.dart';
+import 'package:flutter/services.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -33,14 +34,13 @@ void main() async {
   // Initialize watering service for monitoring penyiraman status
   await WateringService.instance.init();
 
-  // In debug mode, trigger a manual test notification once so we can verify
-  // that notification delivery and platform logging works on this device.
-  if (kDebugMode) {
-    await WateringService.instance.triggerWateringNotification(
-      title: '🔔 Tes Penyiraman',
-      body: 'Ini notifikasi uji untuk konfirmasi tampilan/push.',
-    );
-  }
+  // Lock app orientation to portrait only (both up and down)
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
+
+  // Removed automatic debug test notification to avoid unwanted popups on startup.
   
   runApp(const MyApp());
 }

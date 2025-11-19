@@ -34,7 +34,8 @@ class _WateringControlCardState extends State<WateringControlCard> {
 
   Future<void> updateWateringDuration(int duration) async {
     try {
-      await _database.update({'lama_menyiram': duration});
+      // Use the standard key used across functions and services
+      await _database.update({'watering_duration': duration});
       debugPrint('Durasi menyiram diperbarui di Firebase Realtime Database: $duration');
     } catch (e) {
       debugPrint('Gagal memperbarui Firebase: $e');
@@ -55,7 +56,9 @@ class _WateringControlCardState extends State<WateringControlCard> {
         } else {
           timer.cancel();
           isTimerRunning = false;
-          widget.onWateringChanged(false);
+            // Ensure Firebase is updated to 0 when timer completes
+            updateWateringDuration(0);
+            widget.onWateringChanged(false);
         }
       });
     });
@@ -188,6 +191,8 @@ class _WateringControlCardState extends State<WateringControlCard> {
                           isTimerRunning = false;
                           remainingSeconds = 0;
                         });
+                        // Update DB to indicate watering stopped
+                        updateWateringDuration(0);
                       }
                       widget.onWateringChanged(!widget.isWatering);
                     },

@@ -1,0 +1,12 @@
+{
+  "name": "rtdb-listener",
+  "version": "1.0.0",
+  "description": "Local RTDB listener that sends FCM topic messages when watering completes",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "firebase-admin": "^11.10.0"
+  }
+}

@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import '../services/watering_service.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'dart:async'; // Tambahkan import untuk Timer
+import 'dart:math' as math;
+import 'package:firebase_messaging/firebase_messaging.dart';
 import '../widgets_home/battery_indicator_card.dart';
 import '../widgets_home/moisture_indicator_card.dart';
 import '../widgets_home/manual_button.dart';
@@ -19,6 +23,7 @@ class _HomePageState extends State<HomePage> {
   double batteryValue = 0; // Mulai dengan 0 agar tidak tampil nilai default
   double temperatureValue = 24; // Default
   double moistureValue = 65; // Default
+  bool _autoSyncReadings = true;
   Timer? _refreshTimer; // Timer untuk refresh otomatis
 
   // Perbaikan path Firebase
@@ -136,6 +141,10 @@ class _HomePageState extends State<HomePage> {
 
       // 5. Cek sekali saat startup untuk melihat struktur database
       _checkDatabaseStructure();
+      // Push initial readings at startup if auto-sync is enabled
+      if (_autoSyncReadings) {
+        _pushSensorReadings();
+      }
       
     } catch (e) {
       debugPrint('Error dalam setup Firebase: $e');
@@ -165,6 +174,7 @@ class _HomePageState extends State<HomePage> {
         setState(() {
           batteryValue = parsedValue.clamp(0.0, 100.0);
         });
+        if (_autoSyncReadings) _pushSensorReadings();
       }
   debugPrint('Battery value updated to: $batteryValue');
     } catch (e) {
@@ -258,6 +268,7 @@ class _HomePageState extends State<HomePage> {
           setState(() {
             temperatureValue = temp;
           });
+              if (_autoSyncReadings) _pushSensorReadings();
         }
       }
       
@@ -277,6 +288,8 @@ class _HomePageState extends State<HomePage> {
           setState(() {
             moistureValue = moisture;
           });
+              if (_autoSyncReadings) _pushSensorReadings();
+          if (_autoSyncReadings) _pushSensorReadings();
         }
       }
       
@@ -289,8 +302,40 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  /// Push current sensor readings to Realtime Database under `service/latest_readings`
+  Future<void> _pushSensorReadings() async {
+    try {
+      // Use the device FCM token as the per-device key when available
+      String deviceKey = 'unknown_${DateTime.now().millisecondsSinceEpoch}';
+      try {
+        final token = await FirebaseMessaging.instance.getToken();
+        if (token != null && token.isNotEmpty) {
+          deviceKey = token.replaceAll('.', '_');
+        }
+      } catch (e) {
+        debugPrint('Could not obtain FCM token for device key: $e');
+      }
+
+      final ref = FirebaseDatabase.instance.ref('service/readings/$deviceKey');
+      await ref.set({
+        'battery_percentage': batteryValue,
+        'suhu': temperatureValue,
+        'moisture_value': moistureValue,
+        'updatedAt': ServerValue.timestamp,
+      });
+      debugPrint('Pushed sensor readings to service/latest_readings');
+    } catch (e) {
+      debugPrint('Failed pushing sensor readings: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Compute a reasonable button width so buttons look consistent and
+    // wrap nicely on narrow (portrait) screens.
+    final double availableWidth = MediaQuery.of(context).size.width - 32.0; // account for page padding
+    final double buttonWidth = math.max(120.0, (availableWidth - 12.0) / 2.0);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Smart Plant Watering'),
@@ -330,9 +375,58 @@ class _HomePageState extends State<HomePage> {
                     ),
                     const SizedBox(height: 8),
                     const Text('Auto refresh setiap 5 detik'),
-                    ElevatedButton(
-                      onPressed: _forceUpdateFromFirebase,
-                      child: const Text('Refresh Data'),
+                    // Use Wrap so buttons will wrap to new lines on narrow screens (portrait)
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 8,
+                      alignment: WrapAlignment.start,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        SizedBox(
+                          width: buttonWidth,
+                          child: ElevatedButton(
+                            onPressed: _forceUpdateFromFirebase,
+                            child: const Text('Refresh Data'),
+                          ),
+                        ),
+                        SizedBox(
+                          width: buttonWidth,
+                          child: ElevatedButton(
+                            onPressed: _pushSensorReadings,
+                            child: const Text('Push Readings'),
+                          ),
+                        ),
+                        // Debug-only manual notification trigger
+                        if (kDebugMode) ...[
+                          SizedBox(
+                            width: buttonWidth,
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(backgroundColor: Colors.blueGrey),
+                              onPressed: () async {
+                                try {
+                                  await WateringService.instance.triggerWateringNotification(
+                                    title: '🔔 Tes Penyiraman (Manual)',
+                                    body: 'Notifikasi manual untuk pengujian.',
+                                  );
+                                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Test notification triggered')),
+                                  );
+                                } catch (e) {
+                                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('Failed to trigger notification: $e')),
+                                  );
+                                }
+                              },
+                              child: const Text('Trigger Notif'),
+                            ),
+                          ),
+                        ],
+                        // Auto-sync status displayed as a Chip so it wraps nicely
+                        Chip(
+                          label: const Text('Auto Sync: enabled'),
+                          backgroundColor: Colors.green[50],
+                        ),
+                      ],
                     ),
                   ],
                 ),

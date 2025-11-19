@@ -1,0 +1,34 @@
+name: RTDB Poller (GitHub Actions)
+
+on:
+  schedule:
+    - cron: '*/5 * * * *' # every 5 minutes — adjust as needed
+  workflow_dispatch:
+
+jobs:
+  poll:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: |
+          cd .github/actions/rtdb-poller
+          npm ci
+
+      - name: Run RTDB poller
+        env:
+          SERVICE_ACCOUNT_JSON: ${{ secrets.SERVICE_ACCOUNT_JSON }}
+          FIREBASE_DB_URL: ${{ secrets.FIREBASE_DB_URL }}
+          RTDB_PATH: ${{ secrets.RTDB_PATH }}
+          META_PATH: ${{ secrets.META_PATH }}
+          FCM_TOPIC: ${{ secrets.FCM_TOPIC }}
+        run: |
+          cd .github/actions/rtdb-poller
+          node poller.js

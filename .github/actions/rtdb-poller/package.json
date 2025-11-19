@@ -1,0 +1,10 @@
+{
+  "name": "rtdb-poller-action",
+  "version": "1.0.0",
+  "description": "GitHub Actions poller that checks Firebase RTDB and sends FCM topic messages",
+  "main": "poller.js",
+  "license": "MIT",
+  "dependencies": {
+    "firebase-admin": "^11.10.0"
+  }
+}
